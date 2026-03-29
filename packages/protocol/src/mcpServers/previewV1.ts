@@ -76,6 +76,7 @@ export const ManagedMcpPreviewEntryV1Schema = McpPreviewEntryBaseV1Schema.extend
   reasonCode: ManagedSessionMcpReasonCodeV1Schema,
   portability: ManagedSessionMcpPortabilityV1Schema,
   defaultSelected: z.boolean(),
+  availableTools: z.array(z.string().min(1)).optional(),
 });
 export type ManagedMcpPreviewEntryV1 = z.infer<typeof ManagedMcpPreviewEntryV1Schema>;
 
@@ -90,6 +91,7 @@ export const DetectedMcpPreviewEntryV1Schema = McpPreviewEntryBaseV1Schema.exten
   scopeKind: z.union([z.literal('providerUser'), z.literal('providerProject')]),
   provider: McpDetectedProviderV1Schema,
   enabled: z.union([z.boolean(), z.null()]),
+  availableTools: z.array(z.string().min(1)).optional(),
   envKeyCount: z.number().int().min(0),
   headerKeyCount: z.number().int().min(0),
   sourcePath: z.string().min(1),

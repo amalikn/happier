@@ -22,6 +22,7 @@ describe('resolveDetectedMcpPreviewEntries', () => {
     const entries = resolveDetectedMcpPreviewEntries({
       agentId: 'codex',
       servers: [createDetected({})],
+      availableToolsByName: { context7: ['resolve-library-id', 'query-docs'] },
     });
 
     expect(entries).toHaveLength(1);
@@ -32,6 +33,7 @@ describe('resolveDetectedMcpPreviewEntries', () => {
       scopeKind: 'providerUser',
       selected: true,
       selectable: false,
+      availableTools: ['resolve-library-id', 'query-docs'],
       headerKeyCount: 0,
       envKeyCount: 0,
     });

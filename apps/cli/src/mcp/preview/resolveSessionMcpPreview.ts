@@ -39,6 +39,8 @@ export function resolveSessionMcpPreview(params: Readonly<{
   selection?: SessionMcpSelectionV1 | null;
   detectedServers: ReadonlyArray<DetectedMcpServerV1>;
   detectedWarnings?: ReadonlyArray<DaemonMcpServersDetectWarningV1>;
+  detectedAvailableToolsByName?: Readonly<Record<string, ReadonlyArray<string>>>;
+  managedAvailableToolsByName?: Readonly<Record<string, ReadonlyArray<string>>>;
 }>): Extract<DaemonMcpServersPreviewResponse, { ok: true }> {
   const managedSelection = resolveManagedSessionMcpSelectionForDirectory({
     settings: params.settings,
@@ -48,10 +50,11 @@ export function resolveSessionMcpPreview(params: Readonly<{
   });
 
   const builtIn = [createBuiltInMcpPreviewEntry()];
-  const managed = buildManagedMcpPreviewEntries(managedSelection);
+  const managed = buildManagedMcpPreviewEntries(managedSelection, params.managedAvailableToolsByName);
   const detected = resolveDetectedMcpPreviewEntries({
     agentId: params.agentId,
     servers: params.detectedServers,
+    availableToolsByName: params.detectedAvailableToolsByName,
   });
   const warnings = (params.detectedWarnings ?? []).map(formatWarning).filter((value) => value.length > 0);
 

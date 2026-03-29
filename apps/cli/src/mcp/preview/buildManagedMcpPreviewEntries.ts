@@ -13,6 +13,7 @@ function resolveManagedScopeKind(item: ResolveManagedSessionMcpSelectionV1Result
 
 export function buildManagedMcpPreviewEntries(
   selection: ResolveManagedSessionMcpSelectionV1Result,
+  availableToolsByName?: Readonly<Record<string, ReadonlyArray<string>>>,
 ): ManagedMcpPreviewEntryV1[] {
   return Object.values(selection.itemsByName)
     .map((item) => ({
@@ -30,6 +31,9 @@ export function buildManagedMcpPreviewEntries(
       reasonCode: item.reasonCode,
       portability: item.portability,
       defaultSelected: item.defaultSelected,
+      ...(availableToolsByName?.[item.name]?.length
+        ? { availableTools: [...availableToolsByName[item.name]] }
+        : {}),
     }))
     .sort((left, right) => left.name.localeCompare(right.name));
 }

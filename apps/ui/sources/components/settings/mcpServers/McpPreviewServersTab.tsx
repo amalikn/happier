@@ -32,6 +32,22 @@ import { resolveMachineServerId } from './resolveMachineServerId';
 
 type PreviewSuccess = Extract<DaemonMcpServersPreviewResponse, { ok: true }>;
 
+function describeManagedPreviewSecondary(entry: PreviewSuccess['managed'][number]): string {
+    const base = resolveManagedAvailabilityLabel(entry);
+    if (entry.availableTools && entry.availableTools.length > 0) {
+        return `${base}\nAvailable tools: ${entry.availableTools.join(', ')}`;
+    }
+    return base;
+}
+
+function describeDetectedPreviewSecondary(entry: PreviewSuccess['detected'][number]): string {
+    const base = entry.sourcePath;
+    if (entry.availableTools && entry.availableTools.length > 0) {
+        return `${base}\nAvailable tools: ${entry.availableTools.join(', ')}`;
+    }
+    return base;
+}
+
 export const McpPreviewServersTab = React.memo(function McpPreviewServersTab(props: Readonly<{
     machines: readonly Machine[];
     machineItems: readonly DropdownMenuItem[];
@@ -202,7 +218,7 @@ export const McpPreviewServersTab = React.memo(function McpPreviewServersTab(pro
                                 subtitle={(
                                     <McpServerRowSummary
                                         primary={resolvePreviewScopeLabel(entry.scopeKind)}
-                                        secondary={resolveManagedAvailabilityLabel(entry)}
+                                        secondary={describeManagedPreviewSecondary(entry)}
                                     />
                                 )}
                                 icon={<Ionicons name={resolveTransportIconName(entry.transport)} size={29} color={theme.colors.accent.blue} />}
@@ -229,7 +245,7 @@ export const McpPreviewServersTab = React.memo(function McpPreviewServersTab(pro
                                 subtitle={(
                                     <McpServerRowSummary
                                         primary={`${entry.provider} · ${resolvePreviewScopeLabel(entry.scopeKind)}`}
-                                        secondary={entry.sourcePath}
+                                        secondary={describeDetectedPreviewSecondary(entry)}
                                     />
                                 )}
                                 icon={<Ionicons name={resolveTransportIconName(entry.transport)} size={29} color={theme.colors.accent.blue} />}

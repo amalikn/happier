@@ -9,8 +9,10 @@ import {
   type DaemonMcpServersTestErrorCode,
   type DaemonMcpServersDetectResponse,
   type DaemonMcpServersDetectWarningV1,
+  type SessionMcpSelectionV1,
   type DaemonMcpServersTestRequest,
   type DaemonMcpServersTestResponse,
+  type DetectedMcpServerV1,
   type McpServerBindingV1,
   type McpServerCatalogEntryV1,
   type McpServersSettingsV1,
@@ -32,6 +34,7 @@ import { probeMcpStdioServerTools } from '@/mcp/servers/probeMcpStdioServerTools
 import { redactMcpServerProbeError } from '@/mcp/servers/redactMcpServerProbeError';
 import { detectProviderMcpServers } from '@/mcp/providerDetection/detectProviderMcpServers';
 import { resolveSessionMcpPreview } from '@/mcp/preview/resolveSessionMcpPreview';
+import { resolveManagedSessionMcpSelectionForDirectory } from '@/mcp/servers/resolveManagedSessionMcpSelectionForDirectory';
 import type { RpcHandlerManager } from '../rpc/RpcHandlerManager';
 
 function redactErrorText(raw: unknown): string {
@@ -41,6 +44,104 @@ function redactErrorText(raw: unknown): string {
 function nowMs(depsNowMs: (() => number) | undefined): number {
   if (typeof depsNowMs === 'function') return depsNowMs();
   return Date.now();
+}
+
+async function resolveManagedPreviewToolNames(params: Readonly<{
+  settings: McpServersSettingsV1;
+  settingsObj: Record<string, unknown>;
+  credentials: Credentials;
+  machineId: string;
+  directory: string;
+  selection?: SessionMcpSelectionV1 | null;
+  env: NodeJS.ProcessEnv;
+  probeMcpStdioServerToolsImpl: typeof probeMcpStdioServerTools;
+}>): Promise<Record<string, string[]>> {
+  const managedSelection = resolveManagedSessionMcpSelectionForDirectory({
+    settings: params.settings,
+    machineId: params.machineId,
+    directory: params.directory,
+    selection: params.selection ?? null,
+  });
+
+  const savedSecretsById = indexSavedSecretsByIdFromAccountSettings(params.settingsObj as any);
+  const settingsSecretsKey = deriveSettingsSecretsKeyForCredentials(params.credentials);
+  const settingsSecretsReadKeys = deriveSettingsSecretsReadKeysForCredentials(params.credentials);
+  const availableToolsByName: Record<string, string[]> = {};
+
+  for (const item of Object.values(managedSelection.itemsByName)) {
+    if (item.availability === 'unavailable') continue;
+
+    try {
+      const materialized = await materializeMcpServerConfigRecord({
+        resolved: {
+          directory: params.directory,
+          strictMode: true,
+          serversByName: {
+            [item.name]: {
+              serverId: item.serverId,
+              name: item.name,
+              bindingId: item.bindingId,
+              enabled: true,
+              config: item.effectiveConfig,
+            },
+          },
+        },
+        savedSecretsById,
+        settingsSecretsKey,
+        settingsSecretsReadKeys,
+        processEnv: params.env,
+        tmpDir: null,
+        strictMode: true,
+      });
+      const config = materialized.mcpServers[item.name];
+      if (!config) continue;
+      const tools = await params.probeMcpStdioServerToolsImpl({ config, baseEnv: params.env });
+      const toolNames = tools
+        .map((tool) => tool.name)
+        .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+      if (toolNames.length > 0) {
+        availableToolsByName[item.name] = toolNames;
+      }
+    } catch {
+      // Tool preview is best-effort; omit tool names if probing fails.
+    }
+  }
+
+  return availableToolsByName;
+}
+
+async function resolveDetectedPreviewToolNames(params: Readonly<{
+  detectedServers: ReadonlyArray<DetectedMcpServerV1>;
+  env: NodeJS.ProcessEnv;
+  probeMcpStdioServerToolsImpl: typeof probeMcpStdioServerTools;
+}>): Promise<Record<string, string[]>> {
+  const availableToolsByName: Record<string, string[]> = {};
+
+  for (const server of params.detectedServers) {
+    if (server.enabled === false) continue;
+    if (server.transport !== 'stdio' || !server.stdio) continue;
+
+    try {
+      const tools = await params.probeMcpStdioServerToolsImpl({
+        config: {
+          command: server.stdio.command,
+          args: server.stdio.args,
+          env: undefined,
+        },
+        baseEnv: params.env,
+      });
+      const toolNames = tools
+        .map((tool) => tool.name)
+        .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+      if (toolNames.length > 0) {
+        availableToolsByName[server.name] = toolNames;
+      }
+    } catch {
+      // Detected tool preview is also best-effort; omit tool names if probing fails.
+    }
+  }
+
+  return availableToolsByName;
 }
 
 function implicitBindingForMachine(params: Readonly<{ serverId: string; machineId: string; nowMs: number }>): McpServerBindingV1 {
@@ -277,6 +378,21 @@ export function registerMachineMcpServersRpcHandlers(params: Readonly<{
           providers: undefined,
           env: depsEnv,
         });
+        const detectedAvailableToolsByName = await resolveDetectedPreviewToolNames({
+          detectedServers: detected.servers,
+          env: depsEnv,
+          probeMcpStdioServerToolsImpl,
+        });
+        const managedAvailableToolsByName = await resolveManagedPreviewToolNames({
+          settings: accountMcpSettings,
+          settingsObj: settingsObj as Record<string, unknown>,
+          credentials,
+          machineId: parsed.data.machineId,
+          directory: parsed.data.directory,
+          selection: parsed.data.selection ?? null,
+          env: depsEnv,
+          probeMcpStdioServerToolsImpl,
+        });
 
         return resolveSessionMcpPreview({
           settings: accountMcpSettings,
@@ -286,6 +402,8 @@ export function registerMachineMcpServersRpcHandlers(params: Readonly<{
           selection: parsed.data.selection ?? null,
           detectedServers: detected.servers,
           detectedWarnings: detected.warnings,
+          detectedAvailableToolsByName,
+          managedAvailableToolsByName,
         });
       } catch (error) {
         return { ok: false, errorCode: 'internal_error', error: redactErrorText(error) };

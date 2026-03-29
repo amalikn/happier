@@ -85,6 +85,7 @@ notes/
 
 # Claude Code cache
 .claude/cache/
+.serena/
 
 # Android build artifacts
 packages/*/android/build/

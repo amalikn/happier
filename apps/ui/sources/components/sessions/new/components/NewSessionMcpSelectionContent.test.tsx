@@ -303,6 +303,7 @@ describe('NewSessionMcpSelectionContent', () => {
                             reasonCode: 'active_by_default',
                             portability: 'portable',
                             defaultSelected: true,
+                            availableTools: ['write_to_terminal', 'read_terminal_output'],
                         }],
                         detected: [{
                             key: 'detected:claude:sequential-thinking',
@@ -316,6 +317,7 @@ describe('NewSessionMcpSelectionContent', () => {
                             scopeKind: 'providerUser',
                             provider: 'claude',
                             enabled: true,
+                            availableTools: ['plan', 'branch'],
                             envKeyCount: 0,
                             headerKeyCount: 0,
                             sourcePath: '/Users/test/.claude/config.json',
@@ -342,9 +344,13 @@ describe('NewSessionMcpSelectionContent', () => {
         expect(managed?.selected).toBe(false);
         expect(capturedItems.some((item) => item.testID === 'new-session.mcp.detected.sequential-thinking')).toBe(true);
         expect(capturedItemGroups.some((group) => group.title === 'settings.mcpServersSourceBuiltIn')).toBe(false);
-
-        const detected = capturedItems.find((item) => item.testID === 'new-session.mcp.detected.sequential-thinking');
-        expect(detected?.subtitle).toBe('Scope · Auth');
+        const managedRow = capturedItems.find((item) => item.testID === 'new-session.mcp.row.server-playwright');
+        expect(typeof managedRow?.subtitle).toBe('string');
+        expect(String(managedRow?.subtitle)).toContain('Available tools: write_to_terminal, read_terminal_output');
+        const detectedRow = capturedItems.find((item) => item.testID === 'new-session.mcp.detected.sequential-thinking');
+        expect(typeof detectedRow?.subtitle).toBe('string');
+        expect(String(detectedRow?.subtitle)).toContain('Scope · Auth');
+        expect(String(detectedRow?.subtitle)).toContain('Available tools: plan, branch');
     });
 
     it('does not render an extra empty-state row when Happier servers exist but preview resolves empty', async () => {

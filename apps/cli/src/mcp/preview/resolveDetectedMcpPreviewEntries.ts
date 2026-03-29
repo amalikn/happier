@@ -28,6 +28,7 @@ function resolveDetectedAuthMode(server: DetectedMcpServerV1): DetectedMcpPrevie
 export function resolveDetectedMcpPreviewEntries(params: Readonly<{
   agentId: string;
   servers: ReadonlyArray<DetectedMcpServerV1>;
+  availableToolsByName?: Readonly<Record<string, ReadonlyArray<string>>>;
 }>): DetectedMcpPreviewEntryV1[] {
   const provider = resolveAgentDetectedProvider(params.agentId);
   if (!provider) return [];
@@ -53,6 +54,9 @@ export function resolveDetectedMcpPreviewEntries(params: Readonly<{
       scopeKind: resolvePreviewProviderScopeKind(server.source.kind),
       provider: server.provider,
       enabled: server.enabled,
+      ...(params.availableToolsByName?.[server.name]?.length
+        ? { availableTools: [...params.availableToolsByName[server.name]] }
+        : {}),
       envKeyCount: server.envKeys.length,
       headerKeyCount: countHeaderKeys(server),
       sourcePath: server.source.path,

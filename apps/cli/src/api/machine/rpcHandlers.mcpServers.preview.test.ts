@@ -47,6 +47,10 @@ describe('rpcHandlers.mcpServers (preview)', () => {
             secrets: [],
           },
         } as any),
+        probeMcpStdioServerTools: async () => [
+          { name: 'write_to_terminal' },
+          { name: 'read_terminal_output' },
+        ],
         detectProviderMcpServers: async () => ({
           servers: [
             {
@@ -92,6 +96,7 @@ describe('rpcHandlers.mcpServers (preview)', () => {
         name: 'playwright',
         sourceKind: 'managed',
         selected: true,
+        availableTools: ['write_to_terminal', 'read_terminal_output'],
       }),
     ]);
     expect(out.detected).toEqual([
@@ -99,6 +104,7 @@ describe('rpcHandlers.mcpServers (preview)', () => {
         provider: 'codex',
         name: 'context7',
         sourceKind: 'detected',
+        availableTools: ['write_to_terminal', 'read_terminal_output'],
       }),
     ]);
   });

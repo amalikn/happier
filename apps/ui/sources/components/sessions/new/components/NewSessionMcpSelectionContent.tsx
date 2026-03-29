@@ -134,6 +134,52 @@ function resolveManagedAvailabilityLabel(availability: 'active' | 'available' | 
     return t('settings.mcpServersStatusUnavailable');
 }
 
+function describeManagedSubtitle(entry: ManagedMcpPreviewEntryV1): string {
+    const lines = [
+        resolvePreviewScopeLabel(entry.scopeKind),
+        resolveAuthBadgeLabel(entry.authMode),
+        describeManagedReason(entry.reasonCode),
+    ].filter(Boolean).join(' · ');
+    if (entry.availableTools && entry.availableTools.length > 0) {
+        return `${lines}\nAvailable tools: ${entry.availableTools.join(', ')}`;
+    }
+    return lines;
+}
+
+function describeDetectedSubtitle(entry: PreviewSuccess['detected'][number]): string {
+    const lines = [
+        resolvePreviewScopeLabel(entry.scopeKind),
+        resolveAuthBadgeLabel(entry.authMode),
+        resolveDetectedAvailabilityLabel(entry),
+    ].filter(Boolean).join(' · ');
+    if (entry.availableTools && entry.availableTools.length > 0) {
+        return `${lines}\nAvailable tools: ${entry.availableTools.join(', ')}`;
+    }
+    return lines;
+}
+
+function groupManagedEntries(entries: ReadonlyArray<ManagedMcpPreviewEntryV1>): Readonly<{
+    selected: ManagedMcpPreviewEntryV1[];
+    available: ManagedMcpPreviewEntryV1[];
+    unavailable: ManagedMcpPreviewEntryV1[];
+}> {
+    const selected: ManagedMcpPreviewEntryV1[] = [];
+    const available: ManagedMcpPreviewEntryV1[] = [];
+    const unavailable: ManagedMcpPreviewEntryV1[] = [];
+
+    for (const entry of entries) {
+        if (entry.selected) {
+            selected.push(entry);
+        } else if (entry.availability === 'available') {
+            available.push(entry);
+        } else {
+            unavailable.push(entry);
+        }
+    }
+
+    return { selected, available, unavailable };
+}
+
 export function NewSessionMcpSelectionContent(props: NewSessionMcpSelectionContentProps) {
     const styles = stylesheet;
     const showNoContextState = !props.loading && !props.hasContext;
@@ -205,11 +251,11 @@ export function NewSessionMcpSelectionContent(props: NewSessionMcpSelectionConte
                 ? 'workspace'
                 : 'machine';
 
-        const subtitle = [
-            resolvePreviewScopeLabel(scopeKind),
-            resolveManagedServerAuthMode(server),
-            describeManagedReason(item.reasonCode),
-        ].filter(Boolean).join(' · ');
+        const subtitle = describeManagedSubtitle({
+            ...item,
+            scopeKind,
+            authMode: resolveManagedServerAuthMode(server),
+        });
 
         return (
             <Item
@@ -358,11 +404,8 @@ export function NewSessionMcpSelectionContent(props: NewSessionMcpSelectionConte
                                             key={entry.key}
                                             testID={`new-session.mcp.detected.${entry.name}`}
                                             title={entry.title || entry.name}
-                                            subtitle={[
-                                                resolvePreviewScopeLabel(entry.scopeKind),
-                                                resolveAuthBadgeLabel(entry.authMode),
-                                            ].filter(Boolean).join(' · ')}
-                                            selected={false}
+                                            subtitle={describeDetectedSubtitle(entry)}
+                                            selected={entry.selected}
                                             detail={resolveDetectedAvailabilityLabel(entry)}
                                             showChevron={false}
                                         />

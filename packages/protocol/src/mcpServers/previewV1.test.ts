@@ -65,6 +65,7 @@ describe('DaemonMcpServersPreview schemas', () => {
           sourceKind: 'detected',
           scopeKind: 'providerUser',
           provider: 'codex',
+          availableTools: ['resolve-library-id', 'query-docs'],
           envKeyCount: 0,
           headerKeyCount: 0,
           enabled: true,
@@ -80,5 +81,6 @@ describe('DaemonMcpServersPreview schemas', () => {
     expect(parsed.builtIn[0]?.name).toBe('happier');
     expect(parsed.managed[0]?.reasonCode).toBe('active_by_default');
     expect(parsed.detected[0]?.provider).toBe('codex');
+    expect(parsed.detected[0]?.availableTools).toEqual(['resolve-library-id', 'query-docs']);
   });
 });
